@@ -1,0 +1,7 @@
+# Bitcoin
+*.wallet
+*.spvchain
+
+# Gradle
+.gradle
+/build/
