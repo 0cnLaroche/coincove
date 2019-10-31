@@ -26,4 +26,10 @@ public class BitcoinController {
         String response = bitcoinService.getKit().wallet().getBalance().toPlainString();
         return new ResponseEntity<String>(response, HttpStatus.OK);
     }
+
+    @GetMapping("/pending")
+    public ResponseEntity<String> pending() {
+        String response = bitcoinService.getPendingTransactionMap().entrySet().toString();
+        return new ResponseEntity<String>(response, HttpStatus.OK);
+    }
 }
