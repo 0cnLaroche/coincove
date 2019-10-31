@@ -1,9 +1,6 @@
 package webserver.service;
 
-import org.bitcoinj.core.Coin;
-import org.bitcoinj.core.ECKey;
-import org.bitcoinj.core.NetworkParameters;
-import org.bitcoinj.core.Transaction;
+import org.bitcoinj.core.*;
 import org.bitcoinj.kits.WalletAppKit;
 import org.bitcoinj.params.MainNetParams;
 import org.bitcoinj.params.RegTestParams;
@@ -11,6 +8,8 @@ import org.bitcoinj.params.TestNet3Params;
 import org.bitcoinj.utils.BriefLogFormatter;
 import org.bitcoinj.wallet.Wallet;
 import org.bitcoinj.wallet.listeners.WalletCoinsReceivedEventListener;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
@@ -33,6 +32,8 @@ public class BitcoinService {
 
     private Map<String, Transaction> pendingTransactionMap;
 
+    private static final Logger LOG = LoggerFactory.getLogger(BitcoinService.class);
+
     public BitcoinService(@Value("${bitcoin.network}") String networkName,
                           @Value("${bitcoin.forwardingAddress}") String forwardingAddressHash) {
 
@@ -49,6 +50,7 @@ public class BitcoinService {
         } else if (networkName.equals("regtest")) {
             params = RegTestParams.get();
             filePrefix = "forwarding-service-regtest";
+
         } else {
             params = MainNetParams.get();
             filePrefix = "forwarding-service";
@@ -113,8 +115,13 @@ public class BitcoinService {
         kit.wallet().addCoinsReceivedEventListener(new WalletCoinsReceivedEventListener() {
             @Override
             public void onCoinsReceived(Wallet wallet, Transaction tx, Coin prevBalance, Coin newBalance) {
-                String addressStr = tx.getOutput(0).getScriptPubKey().getToAddress(params).toString();
-                pendingTransactionMap.put(addressStr, tx);
+                for (TransactionOutput txOut : tx.getOutputs()) {
+                    if (txOut.isMine(wallet));
+                    String key = txOut.getScriptPubKey().getToAddress(params).toString();
+                    pendingTransactionMap.put(key, tx);
+                    LOG.debug("Transaction Output received Address : {} Value: {}", key, txOut.getValue().getValue());
+                    LOG.info("Funds has been received, added to pending transactions");
+                }
             }
         });
     }
