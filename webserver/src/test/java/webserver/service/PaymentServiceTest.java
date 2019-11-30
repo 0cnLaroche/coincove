@@ -1,6 +1,5 @@
 package webserver.service;
 
-import javafx.animation.PauseTransition;
 import org.bitcoinj.core.*;
 import org.junit.Ignore;
 import org.mockito.ArgumentMatchers;
@@ -10,7 +9,6 @@ import webserver.model.Payment;
 import webserver.model.PaymentStatus;
 import org.bitcoinj.params.RegTestParams;
 import org.bitcoinj.script.Script;
-import org.javamoney.moneta.FastMoney;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.InjectMocks;
