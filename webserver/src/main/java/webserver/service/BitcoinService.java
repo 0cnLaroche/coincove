@@ -12,6 +12,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import webserver.model.Payment;
+import webserver.repository.TransactionRepository;
 
 import java.io.File;
 import java.util.HashMap;
@@ -21,25 +23,25 @@ import java.util.Map;
 public class BitcoinService {
 
     private WalletAppKit kit;
-
     private NetworkParameters params;
-
     private String forwardingAddressHash;
-
     private String networkName;
-
     private String filePrefix;
-
     private Map<String, Transaction> pendingTransactionMap;
+    private TransactionRepository transactionRepository;
+
+    private static final double EQUIVALENCY_MARGIN = 0.01;
 
     private static final Logger LOG = LoggerFactory.getLogger(BitcoinService.class);
 
     public BitcoinService(@Value("${bitcoin.network}") String networkName,
-                          @Value("${bitcoin.forwardingAddress}") String forwardingAddressHash) {
+                          @Value("${bitcoin.forwardingAddress}") String forwardingAddressHash,
+                          TransactionRepository transactionRepository) {
 
         this.pendingTransactionMap = new HashMap<>();
         this.networkName = networkName;
         this.forwardingAddressHash = forwardingAddressHash;
+        this.transactionRepository = transactionRepository;
 
         BriefLogFormatter.init();
 
@@ -57,7 +59,26 @@ public class BitcoinService {
         }
 
         initWalletAppKit();
+        initCoinReceivedListener();
 
+    }
+
+    /**
+     * Finds a transaction matching a payment output address and satoshis value within a certain
+     * error margin.
+     * @param payment
+     * @return Matching Transaction
+     */
+    public Transaction findTransaction(Payment payment) {
+
+        Transaction tx = getPendingTransaction(payment.getAddress());
+
+        for (TransactionOutput txOut : tx.getOutputs()) {
+            if (isEquivalentWithMargin(payment.getSatoshis(), txOut.getValue().value, EQUIVALENCY_MARGIN)) {
+                 return tx;
+            }
+        }
+        return null;
     }
 
     /**
@@ -91,6 +112,21 @@ public class BitcoinService {
     }
 
     /**
+     * Evaluate that two amounts are equivalent under a certain margin
+     * @param arg0 satoshis
+     * @param arg1 satoshis
+     * @param margin
+     * @return
+     */
+    private boolean isEquivalentWithMargin(long arg0, long arg1, double margin) {
+        double difference = (double) (arg0 - arg1) / arg0;
+        if (difference > margin || difference < -margin) {
+            return false;
+        }
+        return true;
+    }
+
+    /**
      * Get a new Bitcoin address to send payment. Will provide a new address
      * everytime it's called.
      * @return fresh Address
@@ -116,23 +152,26 @@ public class BitcoinService {
             @Override
             public void onCoinsReceived(Wallet wallet, Transaction tx, Coin prevBalance, Coin newBalance) {
                 for (TransactionOutput txOut : tx.getOutputs()) {
-                    if (txOut.isMine(wallet));
-                    String key = txOut.getScriptPubKey().getToAddress(params).toString();
-                    pendingTransactionMap.put(key, tx);
-                    LOG.debug("Transaction Output received Address : {} Value: {}", key, txOut.getValue().getValue());
-                    LOG.info("Funds has been received, added to pending transactions");
+                    if (txOut.isMine(wallet)) {
+                        String key = txOut.getScriptPubKey().getToAddress(params).toString();
+                        // transactionRepository.save(tx);
+                        pendingTransactionMap.put(key, tx);
+                        LOG.debug("Transaction Output received Address : {} Value: {}", key, txOut.getValue().getValue());
+                        LOG.info("Funds has been received, added to pending transactions");
+                    }
+
                 }
             }
         });
     }
 
-    public Map<String, Transaction> getPendingTransactionMap() {
+    private Map<String, Transaction> getPendingTransactionMap() {
         synchronized (pendingTransactionMap) {
             return pendingTransactionMap;
         }
     }
 
-    public Transaction getTransaction(String address) {
+    public Transaction getPendingTransaction(String address) {
         synchronized (pendingTransactionMap) {
             return pendingTransactionMap.get(address);
         }
@@ -146,7 +185,7 @@ public class BitcoinService {
         return forwardingAddressHash;
     }
 
-    public void setForwardingAddressHash(String forwardingAddressHash) {
+    private void setForwardingAddressHash(String forwardingAddressHash) {
         this.forwardingAddressHash = forwardingAddressHash;
     }
 }

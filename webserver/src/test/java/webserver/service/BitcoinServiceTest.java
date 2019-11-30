@@ -1,8 +1,12 @@
 package webserver.service;
 
+import org.bitcoinj.core.Transaction;
 import org.junit.BeforeClass;
 import org.junit.Ignore;
 import org.junit.Test;
+import org.mockito.Mock;
+import org.mockito.Mockito;
+import webserver.repository.TransactionRepository;
 
 public class BitcoinServiceTest {
 
@@ -10,7 +14,8 @@ public class BitcoinServiceTest {
 
     @BeforeClass
     public static void init() {
-        sut = new BitcoinService("regtest", "?????");
+        TransactionRepository transactionRepository = Mockito.mock(TransactionRepository.class);
+        sut = new BitcoinService("regtest", "?????", transactionRepository);
     }
 
     @Ignore
