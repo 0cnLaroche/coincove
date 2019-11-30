@@ -1,5 +1,8 @@
 package webserver.service;
 
+import com.google.common.util.concurrent.ListenableFuture;
+import org.bitcoinj.core.TransactionConfidence;
+import webserver.confidence.ConfidenceValidator;
 import webserver.model.Payment;
 import webserver.model.PaymentStatus;
 import org.bitcoinj.core.Transaction;
@@ -20,45 +23,36 @@ import java.util.concurrent.*;
 public class PaymentService {
 
     private BitcoinService bitcoinService;
-
     private PaymentRepository paymentRepository;
-
     private ThreadPoolExecutor executor;
-
-    Logger log = LoggerFactory.getLogger(PaymentService.class);
+    private ConfidenceValidator confidenceValidator;
+    private static List<Payment> pendingPaymentList;
+    private static List<Payment> rejectedPaymentList;
+    private static BlockingQueue<Payment> validatedPaymentQueue;
 
     private static final int PROCESSING_DEFAULT_TIMEOUT = 120;
     private static final int MAX_WORKERS = 1000;
 
-    private static List<Payment> pendingPaymentList;
-
-    private static List<Payment> rejectedPaymentList;
-
-    private static BlockingQueue<Payment> validatedPaymentQueue;
+    Logger log = LoggerFactory.getLogger(PaymentService.class);
 
     @Autowired
-    public PaymentService(BitcoinService bitcoinService, PaymentRepository paymentRepository) {
+    public PaymentService(BitcoinService bitcoinService, PaymentRepository paymentRepository,
+                          ConfidenceValidator confidenceValidator) {
         this.bitcoinService = bitcoinService;
         this.paymentRepository = paymentRepository;
-        this.pendingPaymentList = Collections.synchronizedList(new ArrayList<Payment>());
-        this.rejectedPaymentList = Collections.synchronizedList(new ArrayList<Payment>());
+        this.confidenceValidator = confidenceValidator;
+        //this.pendingPaymentList = Collections.synchronizedList(new ArrayList<Payment>());
+        //this.rejectedPaymentList = Collections.synchronizedList(new ArrayList<Payment>());
+        //this.validatedPaymentQueue = new LinkedBlockingQueue<>();
+        this.pendingPaymentList = new ArrayList<Payment>();
+        this.rejectedPaymentList = new ArrayList<Payment>();
         this.validatedPaymentQueue = new LinkedBlockingQueue<>();
-
 
         this.executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(MAX_WORKERS);
     }
 
     public PaymentStatus verifyPayment(Payment payment) {
-
-        Transaction tx = bitcoinService.getTransaction(payment.getAddress());
-
-        if (tx != null) {
-            if (payment.getSatoshis() == tx.getOutput(0).getValue().value) {
-                return PaymentStatus.VERIFIED;
-            }
-            return PaymentStatus.WRONG_AMOUNT;
-        }
-        return PaymentStatus.PENDING;
+        return null;
     }
 
     /**
@@ -69,70 +63,74 @@ public class PaymentService {
      * @return Payment Status
      */
 
-    private PaymentStatus processPayment(Payment payment, Runnable runnable) {
+    private void processPayment(Payment payment, Runnable runnable) {
 
         log.info("Processing payment");
+        payment.setStatus(PaymentStatus.PROCESSING);
+        payment.setProcessedTime(LocalDateTime.now());
+
+        paymentRepository.save(payment);
 
         LocalDateTime timeout = LocalDateTime.now().plusMinutes(PROCESSING_DEFAULT_TIMEOUT);
 
-        PaymentStatus status = PaymentStatus.PROCESSING;
-        payment.setStatus(status);
-        paymentRepository.save(payment);
+        try {
 
-        while(timeout.isAfter(LocalDateTime.now()) && pendingPaymentList.contains(payment)) {
+        while(timeout.isAfter(LocalDateTime.now())) {
 
-            synchronized (payment) {
-                status = verifyPayment(payment);
-                payment.setStatus(status);
+            Transaction tx = bitcoinService.findTransaction(payment);
 
-                switch (status) {
-                    case VERIFIED :
-                        payment.setStatus(PaymentStatus.VERIFIED);
-                        payment.setProcessedTime(LocalDateTime.now());
-                        pendingPaymentList.remove(payment);
-                        validatedPaymentQueue.add(payment);
-                        paymentRepository.save(payment);
-                        log.info("Payment has been verified");
-                        runnable.run();
-                        return status;
-                    case WRONG_AMOUNT:
-                    case REFUSED:
-                        payment.setStatus(status);
-                        payment.setProcessedTime(LocalDateTime.now());
-                        pendingPaymentList.remove(payment);
-                        rejectedPaymentList.add(payment);
-                        paymentRepository.save(payment);
-                        log.info("Payment information doesn't match");
-                        return status;
+            if (tx != null) {
+
+                payment.setTransactionId(tx.getTxId().toString());
+                Future<TransactionConfidence> confidenceFuture =
+                        tx.getConfidence().getDepthFuture(payment.getConfirmationsRequired(), executor);
+                while (!confidenceFuture.isDone()) {
+                    Thread.sleep(100);
                 }
+
+                payment.setStatus(PaymentStatus.VERIFIED);
+                payment.setStatusTime(LocalDateTime.now());
+                pendingPaymentList.remove(payment);
+                validatedPaymentQueue.add(payment);
+                paymentRepository.save(payment);
+                runnable.run();
+                // TODO: Process order
+                return;
             }
-            try {
-                Thread.sleep(100);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+
+            Thread.sleep(100);
+
         }
-        status = PaymentStatus.REFUSED;
+
+        } catch (InterruptedException e) {
+
+            e.printStackTrace();
+        }
+
+
         pendingPaymentList.remove(payment);
         rejectedPaymentList.add(payment);
         synchronized (payment) {
-            payment.setProcessedTime(LocalDateTime.now());
-            payment.setStatus(status);
+            payment.setStatusTime(LocalDateTime.now());
+            payment.setStatus(PaymentStatus.REFUSED);
             paymentRepository.save(payment);
         }
         log.info("Payment refused");
-        return status;
+        return;
     }
 
     public Payment receive(Payment payment) {
 
         payment.setStatus(PaymentStatus.PENDING);
+        payment.setConfirmationsRequired(confidenceValidator.confirmationsNeeded(payment.getValue().doubleValue()));
         String freshId = paymentRepository.save(payment).getId();
         payment.setId(freshId);
         pendingPaymentList.add(payment);
 
-        Future<PaymentStatus> future = executor.submit(()->
-             processPayment(payment, ()->{})
+        executor.submit(()->
+             processPayment(payment, ()->{
+                 // Do something once the payment has been verified
+             })
         );
 
         return payment;
@@ -161,7 +159,7 @@ public class PaymentService {
     public int getPaymentsInProcessCount() {
         return executor.getActiveCount();
     }
-
+/*
     private Thread dispatcher = new Thread(new Runnable() {
         @Override
         public void run() {
@@ -175,5 +173,5 @@ public class PaymentService {
             }
         }
     });
-
+*/
 }
