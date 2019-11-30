@@ -13,9 +13,12 @@ public class Payment {
     private String currency;
     private String address;
     private long satoshis;
+    private int confirmationsRequired;
     private LocalDateTime submittedTime;
     private LocalDateTime processedTime;
+    private LocalDateTime statusTime;
     private PaymentStatus status;
+    private String transactionId;
 
     public BigDecimal getValue() {
         return value;
@@ -79,6 +82,30 @@ public class Payment {
 
     public void setCurrency(String currency) {
         this.currency = currency;
+    }
+
+    public int getConfirmationsRequired() {
+        return confirmationsRequired;
+    }
+
+    public void setConfirmationsRequired(int confirmationsRequired) {
+        this.confirmationsRequired = confirmationsRequired;
+    }
+
+    public String getTransactionId() {
+        return transactionId;
+    }
+
+    public void setTransactionId(String transactionId) {
+        this.transactionId = transactionId;
+    }
+
+    public LocalDateTime getStatusTime() {
+        return statusTime;
+    }
+
+    public void setStatusTime(LocalDateTime statusTime) {
+        this.statusTime = statusTime;
     }
 
     @Override
