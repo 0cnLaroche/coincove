@@ -28,7 +28,7 @@ public class ConfidenceValidatorDemo {
 
     double maxHashpower(double v) {
         // C is $/s
-        double C = ((W * D) / H) * DELAY;
+        double C = (((W * D) + amortizedValue(3000, 36)) / H) * DELAY;
         return (v * (1 - O)) / C;
     }
 
@@ -40,6 +40,10 @@ public class ConfidenceValidatorDemo {
             q = attackerSuccessProbability(maxHashpower(v) / T, z);
         }
         return z;
+    }
+
+    public double amortizedValue(double value, int lifespanMonths) {
+        return value / lifespanMonths / 30 / 24 / 60 / 60;
     }
 
     public static void main(String[] args) {
