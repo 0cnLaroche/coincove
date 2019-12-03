@@ -20,10 +20,11 @@ public class ConfidenceValidator {
             @Value("${miner.value}") float minerValue,
             @Value("${miner.costkwh}")double electricityCost,
             @Value("${miner.network.hashpower}") double networkHashPower,
+            @Value("${miner.lifespan}") int lifespan,
             @Value("${validation.confidence}") double confidence,
             @Value("${validation.delay}") int delay) {
 
-        this.attacker = new Miner(hashPower, watts, minerValue, electricityCost);
+        this.attacker = new Miner(hashPower, watts, minerValue, electricityCost, lifespan);
         this.networkHashPower = networkHashPower;
         this.confidence = confidence;
         this.delay = delay;
@@ -36,7 +37,7 @@ public class ConfidenceValidator {
      * @param z A number of confirmations
      * @return
      */
-    private double attackerSuccessProbability(double q, int z){
+    public double attackerSuccessProbability(double q, int z){
         double p = 1.0 - q;
         double lambda = z * (q / p);
         double sum = 1.0;
@@ -54,7 +55,8 @@ public class ConfidenceValidator {
         // cost is $/s
         double kw = attacker.getWatts() * 1000;
         double ckws = attacker.getElectricityCost() / 60 / 60;
-        double cost = ((kw * ckws) / attacker.getHashPower()) * delay;
+        double amortization = amortizedValue(attacker.getValue(), attacker.getLifespan());
+        double cost = ( ((kw * ckws) + amortization) / attacker.getHashPower()) * delay;
         return (transactionValue * (1 - confidence)) / cost;
     }
 
@@ -71,6 +73,17 @@ public class ConfidenceValidator {
             q = attackerSuccessProbability(maxHashpower(transactionValue) / networkHashPower, z);
         }
         return z;
+    }
+
+    /**
+     * Amortize value to a cost per second. Value is divided by lifespan in months, per 30 days,
+     * per 24 hours, per 60 minutes and then per 60 seconds.
+     * @param value
+     * @param lifespanMonths
+     * @return amortized value/s
+     */
+    public double amortizedValue(double value, int lifespanMonths) {
+        return value / lifespanMonths / 30 / 24 / 60 / 60;
     }
 
     public Miner getAttacker() {
