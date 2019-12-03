@@ -8,8 +8,9 @@ public class Miner {
 
     private float hashPower; // Machine TH/s
     private float watts; // Machine KW consumption
-    private float value;
+    private float value; // Machine value in dollars
     private double electricityCost; // $ cost for 1 KW/h
+    private int lifespan; // Lifespan before obsolete or fails
 
     /**
      *
@@ -19,11 +20,13 @@ public class Miner {
      * @param electricityCost Electricity cost for one kw/h
      */
 
-    public Miner(float hashPower, float watts, float value, double electricityCost) {
+    public Miner(float hashPower, float watts, float value, double electricityCost, int lifespan) {
         this.hashPower = hashPower;
         this.watts = watts;
         this.value = value;
         this.electricityCost = electricityCost;
+        this.lifespan = lifespan;
+        this.value = value;
     }
 
     public Miner() {
@@ -67,4 +70,14 @@ public class Miner {
     public void setElectricityCost(double electricityCost) {
         this.electricityCost = electricityCost;
     }
+
+    public int getLifespan() {
+        return lifespan;
+    }
+
+    public void setLifespan(int lifespan) {
+        this.lifespan = lifespan;
+    }
+
+
 }
