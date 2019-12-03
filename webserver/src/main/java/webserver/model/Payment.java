@@ -19,6 +19,7 @@ public class Payment {
     private LocalDateTime statusTime;
     private PaymentStatus status;
     private String transactionId;
+    private String orderId;
 
     public BigDecimal getValue() {
         return value;
@@ -106,6 +107,14 @@ public class Payment {
 
     public void setStatusTime(LocalDateTime statusTime) {
         this.statusTime = statusTime;
+    }
+
+    public String getOrderId() {
+        return orderId;
+    }
+
+    public void setOrderId(String orderId) {
+        this.orderId = orderId;
     }
 
     @Override

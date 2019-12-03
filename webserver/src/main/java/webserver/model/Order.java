@@ -6,6 +6,7 @@ import java.util.List;
 public class Order {
 
     private List<Item> itemList;
+    private List<Payment> paymentList;
     private OrderStatus status;
     private LocalDate shippedDate;
 
@@ -31,5 +32,13 @@ public class Order {
 
     public void setShippedDate(LocalDate shippedDate) {
         this.shippedDate = shippedDate;
+    }
+
+    public List<Payment> getPaymentList() {
+        return paymentList;
+    }
+
+    public void setPaymentList(List<Payment> paymentList) {
+        this.paymentList = paymentList;
     }
 }
