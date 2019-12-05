@@ -25,6 +25,7 @@ public class ConfidenceController {
         response.setForValue(value);
         response.setMinDepth(confidenceValidator.confirmationsNeeded(value));
         response.setTime(LocalDateTime.now());
+        response.setEstimatedDuration(10 * response.getMinDepth() + " minutes");
         return new ResponseEntity<ConfidenceResponse>(response, HttpStatus.OK);
     }
 }
