@@ -14,6 +14,7 @@ public class Payment {
     private String address;
     private long satoshis;
     private int confirmationsRequired;
+    private int confirmationsReceived;
     private LocalDateTime submittedTime;
     private LocalDateTime processedTime;
     private LocalDateTime statusTime;
@@ -107,6 +108,14 @@ public class Payment {
 
     public void setStatusTime(LocalDateTime statusTime) {
         this.statusTime = statusTime;
+    }
+
+    public int getConfirmationsReceived() {
+        return confirmationsReceived;
+    }
+
+    public void setConfirmationsReceived(int confirmationsReceived) {
+        this.confirmationsReceived = confirmationsReceived;
     }
 
     public String getOrderId() {

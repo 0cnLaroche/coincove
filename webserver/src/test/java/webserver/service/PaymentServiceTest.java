@@ -52,70 +52,6 @@ public class PaymentServiceTest {
 
     }
 
-    @Test
-    @Ignore
-    public void verifyValidPaymentTest() {
-        Transaction tx = new Transaction(bitcoinService.getParams());
-
-        tx.addOutput(Coin.valueOf(VALID_SATOSHIS), VALID_ADDRESS);
-
-        when(bitcoinService.getPendingTransaction(VALID_ADDRESS.toString())).thenReturn(tx);
-
-        // Case : Valid payment has status Verified
-        assertEquals(PaymentStatus.VERIFIED, paymentService.verifyPayment(VALID_PAYMENT));
-
-    }
-
-    @Test
-    @Ignore
-    public void verifyReceivedPaymentWithMarginTest() {
-        Transaction tx = new Transaction(bitcoinService.getParams());
-        Payment payment = new Payment();
-        payment.setAddress(VALID_ADDRESS.toString());
-
-        long compared = Math.round(((double) VALID_SATOSHIS )* 1.004);
-        payment.setSatoshis(compared);
-
-        tx.addOutput(Coin.valueOf(VALID_SATOSHIS), VALID_ADDRESS);
-
-        when(bitcoinService.getPendingTransaction(ArgumentMatchers.eq(VALID_ADDRESS.toString()))).thenReturn(tx);
-
-        // Case : Valid payment is not equal to transaction but equivalent under set margin
-        assertEquals(PaymentStatus.RECEIVED, paymentService.verifyPayment(payment));
-
-        compared = Math.round(((double) VALID_SATOSHIS ) * 1.2);
-        payment.setSatoshis(compared);
-
-        // Case : Payment is not equivalent cause over margin
-        assertNotEquals(PaymentStatus.RECEIVED, paymentService.verifyPayment(payment));
-
-    }
-
-    @Test
-    @Ignore
-    public void verifyPaymentNotReceivedTest() {
-
-        // Case : Payment for transaction not received in the wallet returns status
-        // not received.
-        assertEquals(PaymentStatus.PENDING,
-                paymentService.verifyPayment(VALID_PAYMENT));
-
-    }
-
-    @Test
-    @Ignore
-    public void verifyWrongAmountPaymentTest() {
-
-        Transaction tx = new Transaction(bitcoinService.getParams());
-
-        tx.addOutput(Coin.valueOf(INVALID_SATOSHIS), VALID_ADDRESS);
-
-        when(bitcoinService.getPendingTransaction(VALID_ADDRESS.toString())).thenReturn(tx);
-
-        // Case : Valid payment has status Verified
-        assertEquals(PaymentStatus.WRONG_AMOUNT, paymentService.verifyPayment(VALID_PAYMENT));
-
-    }
 
     @Test
     public void receivePaymentTest() {
@@ -125,7 +61,7 @@ public class PaymentServiceTest {
         Transaction tx = new Transaction(bitcoinService.getParams());
 
         tx.addOutput(Coin.valueOf(VALID_SATOSHIS), VALID_ADDRESS);
-        tx.getConfidence(new Context(bitcoinService.getParams())).setDepthInBlocks(100);
+        tx.getConfidence(new Context(bitcoinService.getParams())).setDepthInBlocks(0);
 
         VALID_PAYMENT.setId("1111");
 
@@ -136,6 +72,11 @@ public class PaymentServiceTest {
 
         paymentService.receive(VALID_PAYMENT);
 
+        tx.getConfidence(new Context(bitcoinService.getParams())).setConfidenceType(TransactionConfidence.ConfidenceType.BUILDING);
+        tx.getConfidence(new Context(bitcoinService.getParams())).setDepthInBlocks(1);
+        tx.getConfidence(new Context(bitcoinService.getParams())).setDepthInBlocks(2);
+        tx.getConfidence(new Context(bitcoinService.getParams())).queueListeners(TransactionConfidence.Listener.ChangeReason.DEPTH);
+
         // Processing is async , wait a bit until it's being processed.  If still active after a minute,
         // something is wrong and test should fail.
         LocalDateTime timeout = LocalDateTime.now().plusMinutes(1);
@@ -144,6 +85,7 @@ public class PaymentServiceTest {
 
         assertEquals("Status of payment has been updated", PaymentStatus.VERIFIED,
                 VALID_PAYMENT.getStatus());
+        assertEquals(2, VALID_PAYMENT.getConfirmationsReceived());
         assertNotNull(VALID_PAYMENT.getStatusTime());
         assertTrue(paymentService.getValidatedPaymentQueue().contains(VALID_PAYMENT));
 

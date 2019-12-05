@@ -17,17 +17,17 @@ public class BitcoinServiceTest {
 
     @BeforeClass
     public static void init() throws IOException, InterruptedException {
-        System.err.println("commence");
-        Runtime.getRuntime().exec("bitcoind -regtest -daemon").waitFor();
-        System.err.println("bitcoind started in regtest mode");
+        //System.err.println("commence");
+        //Runtime.getRuntime().exec("bitcoind -regtest -daemon").waitFor();
+        //System.err.println("bitcoind started in regtest mode");
         TransactionRepository transactionRepository = Mockito.mock(TransactionRepository.class);
-        sut = new BitcoinService("regtest", "?????", transactionRepository);
+        sut = new BitcoinService("testnet", "?????", transactionRepository);
     }
 
     @AfterClass
     public static void end() throws IOException, InterruptedException {
-        Runtime.getRuntime().exec("bitcoin-cli stop").waitFor();
-        System.err.println("bitcoind stopped");
+        //Runtime.getRuntime().exec("bitcoin-cli stop").waitFor();
+        //System.err.println("bitcoind stopped");
     }
 
     @Test

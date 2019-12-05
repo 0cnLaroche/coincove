@@ -73,11 +73,14 @@ public class BitcoinService {
 
         Transaction tx = getPendingTransaction(payment.getAddress());
 
-        for (TransactionOutput txOut : tx.getOutputs()) {
-            if (isEquivalentWithMargin(payment.getSatoshis(), txOut.getValue().value, EQUIVALENCY_MARGIN)) {
-                 return tx;
+        if (tx != null) {
+            for (TransactionOutput txOut : tx.getOutputs()) {
+                if (isEquivalentWithMargin(payment.getSatoshis(), txOut.getValue().value, EQUIVALENCY_MARGIN)) {
+                    return tx;
+                }
             }
         }
+
         return null;
     }
 
@@ -154,7 +157,7 @@ public class BitcoinService {
                 for (TransactionOutput txOut : tx.getOutputs()) {
                     if (txOut.isMine(wallet)) {
                         String key = txOut.getScriptPubKey().getToAddress(params).toString();
-                        // transactionRepository.save(tx);
+                        //transactionRepository.save(tx);
                         pendingTransactionMap.put(key, tx);
                         LOG.debug("Transaction Output received Address : {} Value: {}", key, txOut.getValue().getValue());
                         LOG.info("Funds has been received, added to pending transactions");
