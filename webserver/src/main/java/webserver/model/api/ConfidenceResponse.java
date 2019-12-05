@@ -6,6 +6,7 @@ public class ConfidenceResponse {
     private int minDepth;
     private double forValue;
     private LocalDateTime time;
+    private String estimatedDuration;
 
     public int getMinDepth() {
         return minDepth;
@@ -29,5 +30,13 @@ public class ConfidenceResponse {
 
     public void setTime(LocalDateTime time) {
         this.time = time;
+    }
+
+    public String getEstimatedDuration() {
+        return estimatedDuration;
+    }
+
+    public void setEstimatedDuration(String estimatedDuration) {
+        this.estimatedDuration = estimatedDuration;
     }
 }
