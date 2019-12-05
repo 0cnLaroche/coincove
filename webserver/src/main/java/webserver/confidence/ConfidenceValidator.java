@@ -51,9 +51,9 @@ public class ConfidenceValidator {
         return sum;
     }
 
-    private double maxHashpower(double transactionValue) {
+    public double maxHashpower(double transactionValue) {
         // cost is $/s
-        double kw = attacker.getWatts() * 1000;
+        double kw = attacker.getWatts() / 1000;
         double ckws = attacker.getElectricityCost() / 60 / 60;
         double amortization = amortizedValue(attacker.getValue(), attacker.getLifespan());
         double cost = ( ((kw * ckws) + amortization) / attacker.getHashPower()) * delay;
@@ -68,9 +68,17 @@ public class ConfidenceValidator {
     public int confirmationsNeeded(double transactionValue) {
         double q = 1.0;
         int z = 0;
-        while(q >= 1 - confidence || z <= 6) { // TODO: remove limit of 6 once algo is finalized
+        while(q >= 1 - confidence) {
             z++;
             q = attackerSuccessProbability(maxHashpower(transactionValue) / networkHashPower, z);
+            if (q < 0) {
+                // Out of range means the attacker would control the whole network
+                // therefore human intervention is required to process the payment
+                return -1;
+            }
+            if (z > 100) {
+                break;
+            }
         }
         return z;
     }
