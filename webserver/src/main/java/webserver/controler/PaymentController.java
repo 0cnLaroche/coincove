@@ -10,6 +10,7 @@ import webserver.service.PaymentService;
 
 @RestController
 @RequestMapping("/payment")
+@CrossOrigin(origins = "*", maxAge = 3600)
 public class PaymentController {
 
     @Autowired
