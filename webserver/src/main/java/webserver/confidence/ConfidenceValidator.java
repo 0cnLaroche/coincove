@@ -57,7 +57,7 @@ public class ConfidenceValidator {
         double ckws = attacker.getElectricityCost() / 60 / 60;
         double amortization = amortizedValue(attacker.getValue(), attacker.getLifespan());
         double cost = ( ((kw * ckws) + amortization) / attacker.getHashPower()) * delay;
-        return (transactionValue * (1 - confidence)) / cost;
+        return (transactionValue * (1-confidence)) / cost;
     }
 
     /**

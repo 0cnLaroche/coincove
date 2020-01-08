@@ -6,11 +6,28 @@ import static java.lang.Math.pow;
 public class ConfidenceValidatorDemo {
 
     double H; // Machine TH/s
-    double W; // Machine KW consumption
-    double D; // $ cost for 1 KW/s
-    double T; // Network total TH
+    double E; // Electricity cost/s
+    double A; // Machine value amortized per second
+    double D = 0.0912; // $ cost for 1 KW/s
+    double T = 92000000; // Network total TH
     double O = 0.95; // Confidence Level
     int DELAY = 60; // Minimum delay between transactions in seconds
+
+    void init(double machineTHs, double consumption, double value, int lifespan) {
+        H = machineTHs;
+        E = electricityCostPerSecond(consumption, D);
+        A = valueAmortizedPerSecond(value, lifespan);
+    }
+
+    int confirmationsNeeded(double v) {
+        double q = 1.0;
+        int z = 0; // z : number of confirmations
+        while(q >= 1 - O) {
+            z++;
+            q = attackerSuccessProbability(maxHashpower(v) / T, z);
+        }
+        return z;
+    }
 
     double attackerSuccessProbability(double q, int z){
         double p = 1.0 - q;
@@ -28,37 +45,45 @@ public class ConfidenceValidatorDemo {
 
     double maxHashpower(double v) {
         // C is $/s
-        double C = (((W * D) + amortizedValue(3000, 36)) / H) * DELAY;
+        double C = ((E + A) / H) * DELAY;
+        //return (v * (1 - O)) / C;
         return (v * (1 - O)) / C;
     }
 
-    int confirmationsNeeded(double v) {
-        double q = 1.0;
-        int z = 0;
-        while(q >= 1 - O) {
-            z++;
-            q = attackerSuccessProbability(maxHashpower(v) / T, z);
-        }
-        return z;
-    }
-
-    public double amortizedValue(double value, int lifespanMonths) {
+    double valueAmortizedPerSecond(double value, int lifespanMonths) {
         return value / lifespanMonths / 30 / 24 / 60 / 60;
+    }
+    double electricityCostPerSecond(double consumption, double costKwh) {
+        // KW consumption * cost KW/s
+        return (consumption / 1000) * (D / 60 / 60);
     }
 
     public static void main(String[] args) {
         ConfidenceValidatorDemo v = new ConfidenceValidatorDemo();
-        v.H = 14;
-        v.D = (0.0938 / 60) / 60;
-        v.W = 1.35;
-        v.T = 92000000;
-        int value = 20000;
+
+        /*int value = 10000;
 
         for (int i = 0; i < 6; i++) {
-            System.out.println(v.attackerSuccessProbability(v.maxHashpower(value)/v.T, i));
+            String message = "Hashpower estimé: " + v.maxHashpower(value)
+                    + " TH/s | probabilité réussite: " +  v
+                    .attackerSuccessProbability(v.maxHashpower(value)/v.T, i);
+            System.out.println(message);
         }
         System.out.println("Nombre de confirmations demandées pour une transaction d'une valeur de " + value + " $ : " +
                 v.confirmationsNeeded(value) + " minimum");
+
+         */
+        /*
+        for (int value = 100; value <= 70000; value += 100) {
+            v.init(73, 2920, 2019, 36);
+            System.out.println("" + value + "\t" +  v.confirmationsNeeded(value));
+        }
+        */
+
+        for (int value = 100; value <= 70000; value += 100) {
+            v.init(73, 2920, 2019, 36);
+            System.out.println("" + value + "\t" +  v.maxHashpower(value));
+        }
 
     }
 }
