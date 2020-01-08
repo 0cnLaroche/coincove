@@ -1,6 +1,7 @@
 package webserver.service;
 
 import org.bitcoinj.core.*;
+import org.bitcoinj.core.listeners.OnTransactionBroadcastListener;
 import org.bitcoinj.kits.WalletAppKit;
 import org.bitcoinj.params.MainNetParams;
 import org.bitcoinj.params.RegTestParams;
@@ -151,6 +152,16 @@ public class BitcoinService {
     }
 
     public void initCoinReceivedListener() {
+        kit.peerGroup().addOnTransactionBroadcastListener(new OnTransactionBroadcastListener() {
+            @Override
+            public void onTransaction(Peer peer, Transaction transaction) {
+                for (TransactionOutput txOut: transaction.getOutputs()) {
+                    if (txOut.isMine(kit.wallet())) {
+                        LOG.info("Transaction broadcasted is ours");
+                    }
+                }
+            }
+        });
         kit.wallet().addCoinsReceivedEventListener(new WalletCoinsReceivedEventListener() {
             @Override
             public void onCoinsReceived(Wallet wallet, Transaction tx, Coin prevBalance, Coin newBalance) {

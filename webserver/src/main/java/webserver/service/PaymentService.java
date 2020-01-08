@@ -65,22 +65,20 @@ public class PaymentService {
     private void processPayment(Payment payment, Runnable runnable) {
 
         LOG.info("Processing payment");
-        payment.setStatus(PaymentStatus.PROCESSING);
-        payment.setProcessedTime(LocalDateTime.now());
-
-        paymentRepository.save(payment);
 
         LocalDateTime timeout = LocalDateTime.now().plusMinutes(PROCESSING_DEFAULT_TIMEOUT);
 
         try {
 
         while(timeout.isAfter(LocalDateTime.now())) {
-        //while (true) {
-            LOG.info("processing");
+            LOG.debug("processing");
             Transaction tx = bitcoinService.findTransaction(payment);
+            payment.setStatus(PaymentStatus.PENDING_MATCH);
+
 
             if (tx != null) {
                 LOG.info("Transaction matched");
+                payment.setStatus(PaymentStatus.PENDING_CONFIRMATION);
                 payment.setTransactionId(tx.getTxId().toString());
 
                 tx.getConfidence().addEventListener(executor, new Listener() {
@@ -89,27 +87,19 @@ public class PaymentService {
                         LOG.info("Partial confirmation received");
                         payment.setConfirmationsReceived(transactionConfidence.getDepthInBlocks());
                         if (payment.getConfirmationsReceived() >= payment.getConfirmationsRequired()) {
-                            LOG.info("Payment verified");
+                            LOG.info("Payment verified (not future)");
                             payment.setStatus(PaymentStatus.VERIFIED);
+                            payment.setStatusTime(LocalDateTime.now());
+                            runnable.run();
+                            // TODO: Process order
+                            pendingPaymentList.remove(payment);
+                            validatedPaymentQueue.add(payment);
+                            paymentRepository.save(payment);
                             tx.getConfidence().removeEventListener(this);
                         }
                     }
                 });
-                Future<TransactionConfidence> confidenceFuture =
-                        tx.getConfidence().getDepthFuture(payment.getConfirmationsRequired(), executor);
-                while (!confidenceFuture.isDone()) {
-                    Thread.sleep(1000);
-                }
 
-                LOG.info("Payment verified");
-                payment.setStatus(PaymentStatus.VERIFIED);
-                payment.setConfirmationsReceived(payment.getConfirmationsRequired());
-                payment.setStatusTime(LocalDateTime.now());
-                pendingPaymentList.remove(payment);
-                validatedPaymentQueue.add(payment);
-                paymentRepository.save(payment);
-                runnable.run();
-                // TODO: Process order
                 return;
             }
 
@@ -118,7 +108,8 @@ public class PaymentService {
         }
 
         } catch (InterruptedException e) {
-
+            payment.setStatus(PaymentStatus.ERROR);
+            paymentRepository.save(payment);
             e.printStackTrace();
         }
 
@@ -134,9 +125,10 @@ public class PaymentService {
         return;
     }
 
-    public Payment receive(Payment payment) {
+    public Payment receive(final Payment payment) {
 
-        payment.setStatus(PaymentStatus.PENDING);
+        payment.setStatus(PaymentStatus.PROCESSING);
+        payment.setProcessedTime(LocalDateTime.now());
         payment.setConfirmationsRequired(confidenceValidator.confirmationsNeeded(payment.getValue().doubleValue()));
         String freshId = paymentRepository.save(payment).getId();
         payment.setId(freshId);
@@ -147,8 +139,6 @@ public class PaymentService {
                  LOG.info("Processing Order... (Not actually doing anything yet)");
              })
         );
-
-
 
         return payment;
     }

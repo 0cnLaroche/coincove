@@ -1,5 +1,6 @@
 package webserver.model;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import org.springframework.data.annotation.Id;
 
 import java.math.BigDecimal;
@@ -8,17 +9,22 @@ import java.time.LocalDateTime;
 public class Payment {
 
     @Id
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private String id;
     private BigDecimal value;
     private String currency;
     private String address;
     private long satoshis;
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private int confirmationsRequired;
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private int confirmationsReceived;
     private LocalDateTime submittedTime;
     private LocalDateTime processedTime;
     private LocalDateTime statusTime;
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private PaymentStatus status;
+    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private String transactionId;
     private String orderId;
 
